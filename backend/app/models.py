@@ -5,6 +5,7 @@ class Persona(BaseModel):
     id: str
     name: str
     description: str
+    platform_notes: dict[str, str] | None = Field(default=None)
 
 AdFormat = Literal["text_copy", "cta_banner", "single_image", "carousel", "video", "search_ad", "email", "audio"]
 
@@ -19,7 +20,7 @@ class CtaBannerContent(BaseModel):
 class SingleImageContent(BaseModel):
     image: str
     image_media_type: str
-    ad_platform: str
+    ad_platform: Literal["instagram_feed", "instagram_story", "facebook_feed", "youtube_thumbnail", "other"]
 
 class CarouselContent(BaseModel):
     images: list[str]
@@ -34,7 +35,7 @@ class CarouselContent(BaseModel):
 
 class VideoContent(BaseModel):
     upload_id: str
-    platform: str
+    platform: Literal["reels", "tiktok_style", "youtube_instream", "other"]
 
 class SearchAdContent(BaseModel):
     headlines: list[str]
@@ -81,8 +82,8 @@ class CampaignInput(BaseModel):
     def check_landing_page_source(self) -> "CampaignInput":
         has_text = bool(self.landing_page and self.landing_page.strip())
         has_image = bool(self.landing_page_image)
-        if has_text == has_image:
-            raise ValueError("Exactly one of landing_page or landing_page_image must be provided.")
+        if has_text and has_image:
+            raise ValueError("At most one of landing_page or landing_page_image can be provided.")
         if has_image and not self.landing_page_image_media_type:
             raise ValueError("landing_page_image_media_type is required when landing_page_image is provided.")
         return self

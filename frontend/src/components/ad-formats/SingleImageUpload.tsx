@@ -26,12 +26,18 @@ export default function SingleImageUpload({ value, onChange }: Props) {
     <div className="field-group">
       <div className="field">
         <label>Platform (e.g. Instagram, LinkedIn)</label>
-        <input
-          type="text"
+        <select
           value={value.ad_platform || ""}
           onChange={(e) => onChange({ ...value, ad_platform: e.target.value })}
           required
-        />
+        >
+          <option value="" disabled>Select platform...</option>
+          <option value="instagram_feed">Instagram Feed</option>
+          <option value="instagram_story">Instagram Story</option>
+          <option value="facebook_feed">Facebook Feed</option>
+          <option value="youtube_thumbnail">YouTube Thumbnail</option>
+          <option value="other">Other</option>
+        </select>
       </div>
       <div className="field">
         <label>Ad Image</label>

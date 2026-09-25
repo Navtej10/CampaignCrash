@@ -7,6 +7,10 @@ from app.config import CORS_ORIGINS, MOCK_MODE
 from app.engine import run_crash_test, run_crash_test_stream
 from app.models import CampaignInput, CrashTestResult
 from app.personas import DEFAULT_PERSONAS
+from fastapi import File, UploadFile
+import uuid
+import os
+from app.personas import DEFAULT_PERSONAS
 
 app = FastAPI(title="CampaignCrash API")
 
@@ -30,22 +34,25 @@ def list_personas():
 
 @app.post("/api/crash-test", response_model=CrashTestResult)
 def crash_test(campaign: CampaignInput):
-    if not campaign.advertisement.strip():
-        raise HTTPException(status_code=400, detail="advertisement is required")
-    if not campaign.landing_page and not campaign.landing_page_image:
-        raise HTTPException(status_code=400, detail="landing_page or landing_page_image is required")
     return run_crash_test(campaign)
 
 
 @app.post("/api/crash-test/stream")
 async def crash_test_stream(campaign: CampaignInput):
-    if not campaign.advertisement.strip():
-        raise HTTPException(status_code=400, detail="advertisement is required")
-    if not campaign.landing_page and not campaign.landing_page_image:
-        raise HTTPException(status_code=400, detail="landing_page or landing_page_image is required")
-        
     async def sse_generator():
         async for event in run_crash_test_stream(campaign):
             yield f"data: {json.dumps(event)}\n\n"
             
     return StreamingResponse(sse_generator(), media_type="text/event-stream")
+
+@app.post("/api/campaigns/upload-video")
+async def upload_video(file: UploadFile = File(...)):
+    upload_id = str(uuid.uuid4())
+    temp_dir = os.path.join(os.getcwd(), "temp_videos")
+    os.makedirs(temp_dir, exist_ok=True)
+    file_path = os.path.join(temp_dir, f"{upload_id}_{file.filename}")
+    
+    with open(file_path, "wb") as f:
+        f.write(await file.read())
+        
+    return {"upload_id": upload_id}

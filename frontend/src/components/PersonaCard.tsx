@@ -34,9 +34,29 @@ export default function PersonaCard({ reaction }: { reaction: PersonaReaction })
 
       {reaction.flags.length > 0 && (
         <ul className="persona-card__flags">
-          {reaction.flags.map((flag) => (
-            <li key={flag}>{flag}</li>
-          ))}
+          {reaction.flags.map((flag) => {
+            const lowerFlag = flag.toLowerCase();
+            const isPlatformNote = lowerFlag.includes("platform note") || lowerFlag.includes("scroll") || lowerFlag.includes("illegible");
+            const isVideoHook = lowerFlag.includes("3-second hook assessment") || lowerFlag.includes("hook assessment");
+            const isVideoMuted = lowerFlag.includes("muted viewing assessment") || lowerFlag.includes("muted");
+            
+            const cleanFlag = flag.replace(/^Platform Note:\s*/i, "");
+            
+            return (
+              <li key={flag}>
+                {isPlatformNote && (
+                  <span style={{ backgroundColor: "#e2e8f0", color: "#475569", padding: "2px 6px", borderRadius: "4px", fontSize: "0.85em", marginRight: "6px", fontWeight: 500 }}>📱 Platform</span>
+                )}
+                {isVideoHook && (
+                  <span style={{ backgroundColor: "#fef08a", color: "#854d0e", padding: "2px 6px", borderRadius: "4px", fontSize: "0.85em", marginRight: "6px", fontWeight: 500 }}>⏱️ First 3 Seconds</span>
+                )}
+                {isVideoMuted && (
+                  <span style={{ backgroundColor: "#d9f99d", color: "#3f6212", padding: "2px 6px", borderRadius: "4px", fontSize: "0.85em", marginRight: "6px", fontWeight: 500 }}>🔇 Muted Viewing</span>
+                )}
+                {cleanFlag}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

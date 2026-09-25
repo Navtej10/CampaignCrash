@@ -24,7 +24,7 @@ const emptyForm: CampaignInput = {
 
 export default function UploadForm({ onSubmit, isRunning }: Props) {
   const [form, setForm] = useState<CampaignInput>(emptyForm);
-  const [inputType, setInputType] = useState<"text" | "image">("text");
+  const [inputType, setInputType] = useState<"text" | "image" | "skip">("text");
 
   function handleImageUpload(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -97,7 +97,7 @@ export default function UploadForm({ onSubmit, isRunning }: Props) {
 
       <div className="field">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-          <label htmlFor="landing_page" style={{ margin: 0 }}>Landing page</label>
+          <label htmlFor="landing_page" style={{ margin: 0 }}>Landing page (Optional)</label>
           <div style={{ display: "flex", gap: "8px" }}>
             <button 
               type="button"
@@ -109,10 +109,15 @@ export default function UploadForm({ onSubmit, isRunning }: Props) {
               onClick={() => { setInputType("image"); update("landing_page", undefined); }}
               style={{ fontSize: "0.85rem", padding: "4px 8px", background: inputType === "image" ? "#eee" : "transparent", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer", color: "black" }}
             >Upload screenshot</button>
+            <button 
+              type="button"
+              onClick={() => { setInputType("skip"); update("landing_page", undefined); update("landing_page_image", undefined); update("landing_page_image_media_type", undefined); }}
+              style={{ fontSize: "0.85rem", padding: "4px 8px", background: inputType === "skip" ? "#eee" : "transparent", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer", color: "black" }}
+            >Skip</button>
           </div>
         </div>
         
-        {inputType === "text" ? (
+        {inputType === "text" && (
           <textarea
             id="landing_page"
             rows={6}
@@ -121,7 +126,8 @@ export default function UploadForm({ onSubmit, isRunning }: Props) {
             onChange={(e) => update("landing_page", e.target.value)}
             required={inputType === "text"}
           />
-        ) : (
+        )}
+        {inputType === "image" && (
           <div>
             <input 
               type="file" 

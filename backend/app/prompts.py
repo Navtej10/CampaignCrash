@@ -25,8 +25,8 @@ PERSONA_REACTION_CAROUSEL_SYSTEM = PERSONA_REACTION_SYSTEM + "\n\nThis is a caro
 PERSONA_REACTION_SEARCH_SYSTEM = PERSONA_REACTION_SYSTEM + "\n\nThis is a search ad seen in a results list next to 3-4 competitor ads, character-limited, no visual — judged almost entirely on specificity of the headline/description."
 PERSONA_REACTION_EMAIL_SYSTEM = PERSONA_REACTION_SYSTEM + "\n\nThis is an email. The subject + preview text are a separate gate you see first. Explicitly report whether you'd open it before reacting to the body."
 PERSONA_REACTION_AUDIO_SYSTEM = PERSONA_REACTION_SYSTEM + "\n\nThis is an audio script. There is no visual at all — flag anything that depends on seeing a price, URL, or code on screen to work, since that's unusable in audio."
-PERSONA_REACTION_SINGLE_IMAGE_SYSTEM = PERSONA_REACTION_SYSTEM + "\n\nThis is a single image ad."
-PERSONA_REACTION_VIDEO_SYSTEM = PERSONA_REACTION_SYSTEM + "\n\nThis is a video ad."
+PERSONA_REACTION_SINGLE_IMAGE_SYSTEM = PERSONA_REACTION_SYSTEM + "\n\nThis is a single image ad. You are scrolling a specific platform, not reading an ad in isolation. Name what's visible in the screenshot (headline, image, any visible price or badge) before reacting, and call out anything that would be illegible or easy to miss at normal scroll speed."
+PERSONA_REACTION_VIDEO_SYSTEM = PERSONA_REACTION_SYSTEM + "\n\nThis is a video ad. You are reviewing a sequence of frames (labeled with timestamps) plus a transcript, standing in for a video. Explicitly evaluate: does the first 3 seconds (first 2-3 frames) give a reason to keep watching? Would this work with sound off and captions only (factor the transcript-as-captions case into the reaction)? Does the pacing lose the viewer anywhere?"
 
 PERSONA_REACTION_USER_TEMPLATE = """Persona: {persona_name}
 Persona traits: {persona_description}
@@ -37,13 +37,12 @@ Target audience (stated by the company): {target_audience}
 --- ADVERTISEMENT ---
 {advertisement}
 
---- LANDING PAGE ---
-{landing_page}
+{landing_page_section}
 
 Respond in character as {persona_name}. Give:
 1. first_read: what you think is being offered, in your own words, after reading the ad
 2. reaction: your candid, specific reaction as a quote (2-4 sentences)
-3. flags: a short list of specific things that confused you, felt hidden, or didn't match between the ad and the landing page
+3. flags: {flags_instruction}
 4. would_continue: would you actually click through / keep reading?"""
 
 

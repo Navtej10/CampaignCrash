@@ -11,6 +11,10 @@ DEFAULT_PERSONAS: list[Persona] = [
             "free or near-free alternatives, distrusts anything that looks "
             "like a subscription trap."
         ),
+        platform_notes={
+            "instagram_story": "You'll tap through in under a second unless the first frame stops you.",
+            "instagram_feed": "You scroll past quickly unless the image feels authentic."
+        }
     ),
     Persona(
         id="parent",
@@ -20,6 +24,9 @@ DEFAULT_PERSONAS: list[Persona] = [
             "immediately whether this solves a specific problem for their "
             "family, has low tolerance for vague copy."
         ),
+        platform_notes={
+            "facebook_feed": "You scroll past quickly unless the image clearly shows something that solves a family problem."
+        }
     ),
     Persona(
         id="professional",
@@ -29,6 +36,9 @@ DEFAULT_PERSONAS: list[Persona] = [
             "compares against tools they already pay for, put off by "
             "hype-y language or unverified claims."
         ),
+        platform_notes={
+            "youtube_thumbnail": "You ignore clickbait thumbnails and look for clear, professional value propositions."
+        }
     ),
     Persona(
         id="price_sensitive",

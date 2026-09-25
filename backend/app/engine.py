@@ -117,6 +117,37 @@ def _build_user_message(campaign: CampaignInput, text_prompt: str) -> list[dict]
                         "data": img
                     }
                 })
+    elif campaign.ad_format == "video":
+        upload_id = campaign.advertisement_content.get("upload_id")
+        import glob
+        import os
+        import base64
+        from app.video import extract_frames, transcribe_audio, get_video_metadata
+        
+        temp_dir = os.path.join(os.getcwd(), "temp_videos")
+        video_files = glob.glob(os.path.join(temp_dir, f"{upload_id}_*")) if upload_id else []
+        if video_files:
+            video_path = video_files[0]
+            frames = extract_frames(video_path, interval_seconds=1.0)
+            transcript = transcribe_audio(video_path)
+            meta = get_video_metadata(video_path)
+            
+            for i, frame in enumerate(frames):
+                msg.append({
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/jpeg",
+                        "data": base64.b64encode(frame).decode('utf-8')
+                    }
+                })
+                msg.append({
+                    "type": "text",
+                    "text": f"Frame at ~{i}s"
+                })
+                
+            platform = campaign.advertisement_content.get("platform")
+            text_prompt += f"\n\nVideo Metadata: {meta}\nTranscript: {transcript}\nPlatform Context: {platform}"
     
     if campaign.landing_page_image:
         msg.append({
@@ -168,14 +199,29 @@ def generate_reactions(campaign: CampaignInput, personas: list[Persona]) -> list
     ad_text = _format_ad_content_for_prompt(campaign)
 
     for persona in personas:
+        has_lp = bool(campaign.landing_page or campaign.landing_page_image)
+        if has_lp:
+            lp_section = "--- LANDING PAGE ---\n" + (campaign.landing_page or "(See attached image)")
+            flags_inst = "a short list of specific things that confused you, felt hidden, or didn't match between the ad and the landing page"
+        else:
+            lp_section = "No landing page was provided — react to the ad on its own; don't assume or invent what happens after a click."
+            flags_inst = "a short list of specific things that confused you, felt hidden, or didn't make sense in the ad"
+
         text_prompt = prompts.PERSONA_REACTION_USER_TEMPLATE.format(
             persona_name=persona.name,
             persona_description=persona.description,
             campaign_objective=campaign.campaign_objective,
             target_audience=campaign.target_audience,
             advertisement=ad_text,
-            landing_page=campaign.landing_page or "(See attached image)",
+            landing_page_section=lp_section,
+            flags_instruction=flags_inst,
         )
+        if campaign.ad_format == "single_image" and persona.platform_notes:
+            platform = campaign.advertisement_content.get("ad_platform")
+            if platform and platform in persona.platform_notes:
+                note = persona.platform_notes[platform]
+                text_prompt += f"\n\nPlatform Note ({platform}): {note}"
+                
         user = _build_user_message(campaign, text_prompt)
         data = _call_tool(sys_prompt, user, ReactionResult.model_json_schema(), "reaction_result")
         reactions.append(
@@ -202,14 +248,29 @@ async def generate_reactions_stream(campaign: CampaignInput, personas: list[Pers
     ad_text = _format_ad_content_for_prompt(campaign)
 
     for persona in personas:
+        has_lp = bool(campaign.landing_page or campaign.landing_page_image)
+        if has_lp:
+            lp_section = "--- LANDING PAGE ---\n" + (campaign.landing_page or "(See attached image)")
+            flags_inst = "a short list of specific things that confused you, felt hidden, or didn't match between the ad and the landing page"
+        else:
+            lp_section = "No landing page was provided — react to the ad on its own; don't assume or invent what happens after a click."
+            flags_inst = "a short list of specific things that confused you, felt hidden, or didn't make sense in the ad"
+
         text_prompt = prompts.PERSONA_REACTION_USER_TEMPLATE.format(
             persona_name=persona.name,
             persona_description=persona.description,
             campaign_objective=campaign.campaign_objective,
             target_audience=campaign.target_audience,
             advertisement=ad_text,
-            landing_page=campaign.landing_page or "(See attached image)",
+            landing_page_section=lp_section,
+            flags_instruction=flags_inst,
         )
+        if campaign.ad_format == "single_image" and persona.platform_notes:
+            platform = campaign.advertisement_content.get("ad_platform")
+            if platform and platform in persona.platform_notes:
+                note = persona.platform_notes[platform]
+                text_prompt += f"\n\nPlatform Note ({platform}): {note}"
+                
         user = _build_user_message(campaign, text_prompt)
         data = _call_tool(sys_prompt, user, ReactionResult.model_json_schema(), "reaction_result")
         
@@ -264,7 +325,7 @@ def suggest_fixes(campaign: CampaignInput, clusters: list[ConfusionCluster]) -> 
     user = prompts.FIX_USER_TEMPLATE.format(
         clusters_json=json.dumps([c.model_dump() for c in relevant], indent=2),
         advertisement=ad_text,
-        landing_page=campaign.landing_page or "(See attached image)",
+        landing_page=campaign.landing_page or "(No landing page)",
     )
     data = _call_tool(prompts.FIX_SYSTEM, user, FixesResult.model_json_schema(), "fixes_result", max_tokens=1200)
     return [FixSuggestion(**f) for f in data.get("fixes", [])]
@@ -331,7 +392,8 @@ def _mock_reactions(campaign: CampaignInput, personas: list[Persona]) -> list[Pe
     
     for i, p in enumerate(personas):
         reaction_text = f"Mock reaction for {campaign.ad_format}."
-        flags = ["Mock flag"]
+        has_lp = bool(campaign.landing_page or campaign.landing_page_image)
+        flags = ["Mock flag (landing page mismatch)"] if has_lp else ["Mock flag (ad unclear)"]
         would_continue = True
         
         # Format-specific distinct behavior
@@ -348,6 +410,22 @@ def _mock_reactions(campaign: CampaignInput, personas: list[Persona]) -> list[Pe
             reaction_text = "It stands out against competitors because of the specific numbers."
         elif campaign.ad_format == "audio":
             reaction_text = "I couldn't write down the URL while driving."
+        elif campaign.ad_format == "single_image":
+            platform = campaign.advertisement_content.get("ad_platform")
+            if p.platform_notes and platform in p.platform_notes:
+                note = p.platform_notes[platform]
+                reaction_text = f"As a {p.name} on {platform}, I thought: {note}"
+                flags = [f"Platform Note: illegible at scroll speed"]
+            else:
+                reaction_text = f"Generic reaction for {platform}"
+        elif campaign.ad_format == "video":
+            if i % 2 == 0:
+                reaction_text = "The first 3 seconds were too slow, so I swiped away."
+                flags = ["Failed 3-second hook assessment"]
+                would_continue = False
+            else:
+                reaction_text = "I watched it muted. The captions were easy to follow."
+                flags = ["Passed muted viewing assessment"]
             
         out.append(
             PersonaReaction(
