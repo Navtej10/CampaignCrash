@@ -1,0 +1,17 @@
+CampaignCrash - Install & Run Commands
+======================================
+
+--- BACKEND ---
+Install dependencies:
+   cd backend
+   python -m venv .venv
+   venv\Scripts\activate  
+
+   python -m uvicorn app.main:app --reload
+
+--- FRONTEND ---
+Install dependencies:
+   cd frontend
+   npm install
+
+   npm run dev
