@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import type { AdFormat, CampaignInput, Platform } from "../types";
 import TextCopyFields from "./ad-formats/TextCopyFields";
 import CtaBannerFields from "./ad-formats/CtaBannerFields";
@@ -39,6 +39,38 @@ interface Props {
   canRetest?: boolean;
   isRunning: boolean;
   isRetesting?: boolean;
+  runStageLabel?: string | null;
+}
+
+function hasAdContent(form: CampaignInput): boolean {
+  const c = form.advertisement_content || {};
+  switch (form.ad_format) {
+    case "text_copy":
+      return Boolean(c.text?.trim());
+    case "cta_banner":
+      return Boolean(c.headline?.trim() || c.subtext?.trim() || c.button_text?.trim());
+    case "single_image":
+      return Boolean(c.image);
+    case "carousel":
+      return Array.isArray(c.images) && c.images.some((img: string) => Boolean(img));
+    case "video":
+      return Boolean(c.upload_id);
+    case "search_ad":
+      return Array.isArray(c.headlines) && c.headlines.some((h: string) => Boolean(h?.trim()));
+    case "email":
+      return Boolean(c.subject?.trim() || c.body?.trim());
+    case "audio":
+      return Boolean(c.script?.trim());
+    default:
+      return false;
+  }
+}
+
+function getMissingContentReason(form: CampaignInput): string {
+  if (form.ad_format === "single_image" || form.ad_format === "carousel" || form.ad_format === "video") {
+    return "Upload your ad media before running the crash test";
+  }
+  return "Enter your ad copy before running the crash test";
 }
 
 export default function UploadForm({
@@ -49,10 +81,28 @@ export default function UploadForm({
   canRetest,
   isRunning,
   isRetesting,
+  runStageLabel,
 }: Props) {
   const [inputType, setInputType] = useState<"text" | "image" | "skip">("text");
 
+  useEffect(() => {
+    if (form.landing_page && inputType !== "text") {
+      setInputType("text");
+    } else if (form.landing_page_image && inputType !== "image") {
+      setInputType("image");
+    }
+  }, [form.landing_page, form.landing_page_image]);
+
   const compatiblePlatforms = COMPATIBLE_PLATFORMS[form.ad_format] ?? ["other"];
+  const contentReady = hasAdContent(form);
+  const runDisabled = isRunning || isRetesting || !contentReady;
+  const runTooltip = !contentReady
+    ? getMissingContentReason(form)
+    : isRunning
+      ? "Crash test is currently running"
+      : isRetesting
+        ? "Re-test is currently running"
+        : undefined;
 
   function handleImageUpload(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -82,7 +132,7 @@ export default function UploadForm({
 
   function handleFormatChange(newFormat: AdFormat) {
     const allowed = COMPATIBLE_PLATFORMS[newFormat] ?? ["other"];
-    const nextPlatform = allowed.includes(form.platform) ? form.platform : allowed[0];
+    const nextPlatform = allowed[0];
     onChange({
       ...form,
       ad_format: newFormat,
@@ -161,45 +211,51 @@ export default function UploadForm({
       </div>
 
       <div className="field">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-          <label htmlFor="landing_page" style={{ margin: 0 }}>Landing page (Optional)</label>
-          <div style={{ display: "flex", gap: "6px" }}>
-            <button
-              type="button"
-              className={`lp-toggle ${inputType === "text" ? "lp-toggle--active" : ""}`}
-              onClick={() => {
-                setInputType("text");
-                onChange({ ...form, landing_page_image: undefined, landing_page_image_media_type: undefined });
-              }}
-            >
-              Paste text
-            </button>
-            <button
-              type="button"
-              className={`lp-toggle ${inputType === "image" ? "lp-toggle--active" : ""}`}
-              onClick={() => {
-                setInputType("image");
-                onChange({ ...form, landing_page: undefined });
-              }}
-            >
-              Screenshot
-            </button>
-            <button
-              type="button"
-              className={`lp-toggle ${inputType === "skip" ? "lp-toggle--active" : ""}`}
-              onClick={() => {
-                setInputType("skip");
-                onChange({
-                  ...form,
-                  landing_page: undefined,
-                  landing_page_image: undefined,
-                  landing_page_image_media_type: undefined,
-                });
-              }}
-            >
-              Skip
-            </button>
-          </div>
+        <label htmlFor="landing_page">
+          Landing page <span className="optional-tag">Optional</span>
+        </label>
+        <div className="segmented-control" role="tablist" aria-label="Landing page input mode">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={inputType === "text"}
+            className={`segmented-control__btn ${inputType === "text" ? "segmented-control__btn--active" : ""}`}
+            onClick={() => {
+              setInputType("text");
+              onChange({ ...form, landing_page_image: undefined, landing_page_image_media_type: undefined });
+            }}
+          >
+            Paste text
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={inputType === "image"}
+            className={`segmented-control__btn ${inputType === "image" ? "segmented-control__btn--active" : ""}`}
+            onClick={() => {
+              setInputType("image");
+              onChange({ ...form, landing_page: undefined });
+            }}
+          >
+            Screenshot
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={inputType === "skip"}
+            className={`segmented-control__btn ${inputType === "skip" ? "segmented-control__btn--active" : ""}`}
+            onClick={() => {
+              setInputType("skip");
+              onChange({
+                ...form,
+                landing_page: undefined,
+                landing_page_image: undefined,
+                landing_page_image_media_type: undefined,
+              });
+            }}
+          >
+            Skip
+          </button>
         </div>
 
         {inputType === "text" && (
@@ -233,14 +289,17 @@ export default function UploadForm({
       </div>
 
       <div className="field">
-        <label htmlFor="target_audience">Target audience (Optional)</label>
+        <label htmlFor="target_audience">
+          Target audience <span className="optional-tag">Optional</span>
+        </label>
         <input
           id="target_audience"
           type="text"
-          placeholder="Who you think this is for (defaults if blank)"
+          placeholder="Who is this for?"
           value={form.target_audience}
           onChange={(e) => update("target_audience", e.target.value)}
         />
+        <p className="field-helper">Defaults to a general audience if blank</p>
       </div>
 
       <div className="field">
@@ -253,11 +312,24 @@ export default function UploadForm({
           onChange={(e) => update("campaign_objective", e.target.value)}
           required
         />
+        <p className="field-helper">e.g. Get free-trial signups</p>
       </div>
 
       <div className="form-actions">
-        <button type="submit" className="run-button" disabled={isRunning || isRetesting}>
-          {isRunning ? "Running the crash test…" : "Run crash test"}
+        <button
+          type="submit"
+          className="run-button"
+          disabled={runDisabled}
+          title={runTooltip}
+        >
+          {isRunning ? (
+            <span className="run-button__loading">
+              <span className="spinner" aria-hidden="true" />
+              {runStageLabel || "Running crash test…"}
+            </span>
+          ) : (
+            "Run crash test"
+          )}
         </button>
         {canRetest && onRetest && (
           <button
