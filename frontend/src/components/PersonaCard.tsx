@@ -1,18 +1,58 @@
-import type { PersonaReaction } from "../types";
+import type { Persona, PersonaReaction } from "../types";
 
-export default function PersonaCard({ reaction }: { reaction: PersonaReaction }) {
+interface Props {
+  reaction: PersonaReaction;
+  persona?: Persona;
+}
+
+const KIND_LABELS: Record<string, string> = {
+  audience: "Audience",
+  contrast: "Contrast",
+  off_target: "Off-target",
+};
+
+export default function PersonaCard({ reaction, persona }: Props) {
+  const kind = reaction.kind || persona?.kind;
+
   return (
     <div className="persona-card">
       <div className="persona-card__head">
-        <span className="persona-card__name">{reaction.persona_name}</span>
-        <span
-          className={`persona-card__continue persona-card__continue--${
-            reaction.would_continue ? "yes" : "no"
-          }`}
-        >
-          {reaction.would_continue ? "Would continue" : "Would bounce"}
-        </span>
+        <div className="persona-card__title-group">
+          <span className="persona-card__name">{reaction.persona_name}</span>
+          {kind && (
+            <span className={`persona-card__kind persona-card__kind--${kind}`}>
+              {KIND_LABELS[kind] ?? kind}
+            </span>
+          )}
+        </div>
+        <div className="persona-card__badges">
+          <span
+            className={`persona-card__continue persona-card__continue--${
+              reaction.would_stop ? "yes" : "no"
+            }`}
+          >
+            {reaction.would_stop ? "Stops scroll" : "Scrolls past"}
+          </span>
+          <span
+            className={`persona-card__continue persona-card__continue--${
+              reaction.would_continue ? "yes" : "no"
+            }`}
+          >
+            {reaction.would_continue ? "Would continue" : "Would bounce"}
+          </span>
+          <span className={`persona-card__trust persona-card__trust--${reaction.trust_level}`}>
+            Trust: {reaction.trust_level}
+          </span>
+        </div>
       </div>
+
+      {persona?.situation && (
+        <p className="persona-card__context">
+          {persona.age ? `${persona.age} · ` : ""}
+          {persona.situation}
+          {persona.device ? ` · ${persona.device}` : ""}
+        </p>
+      )}
 
       {reaction.would_open !== undefined && reaction.would_open !== null && (
         <p className="persona-card__first-read" style={{ marginBottom: "8px" }}>
@@ -39,9 +79,9 @@ export default function PersonaCard({ reaction }: { reaction: PersonaReaction })
             const isPlatformNote = lowerFlag.includes("platform note") || lowerFlag.includes("scroll") || lowerFlag.includes("illegible");
             const isVideoHook = lowerFlag.includes("3-second hook assessment") || lowerFlag.includes("hook assessment");
             const isVideoMuted = lowerFlag.includes("muted viewing assessment") || lowerFlag.includes("muted");
-            
+
             const cleanFlag = flag.replace(/^Platform Note:\s*/i, "");
-            
+
             return (
               <li key={flag}>
                 {isPlatformNote && (

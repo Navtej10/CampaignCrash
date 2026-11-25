@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 interface Props {
   value: { script: string; audio_platform: "podcast_preroll" | "radio" | "other" };
   onChange: (value: any) => void;

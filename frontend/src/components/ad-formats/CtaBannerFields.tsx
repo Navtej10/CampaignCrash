@@ -1,5 +1,3 @@
-import { ChangeEvent } from "react";
-
 interface Props {
   value: { headline: string; subtext: string; button_text: string };
   onChange: (value: any) => void;

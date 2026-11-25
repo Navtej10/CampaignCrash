@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 interface Props {
   value: { subject: string; preview_text: string; body: string };
   onChange: (value: any) => void;

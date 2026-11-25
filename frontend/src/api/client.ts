@@ -1,4 +1,4 @@
-import type { CampaignInput, CrashTestResult, StreamEvent } from "../types";
+import type { CampaignInput, CrashTestResult, RetestResult, StreamEvent } from "../types";
 
 export async function runCrashTest(input: CampaignInput): Promise<CrashTestResult> {
   const res = await fetch("/api/crash-test", {
@@ -15,16 +15,28 @@ export async function runCrashTest(input: CampaignInput): Promise<CrashTestResul
   return res.json();
 }
 
-export async function runCrashTestStream(
-  input: CampaignInput,
-  onEvent: (event: StreamEvent) => void
-): Promise<void> {
-  const res = await fetch("/api/crash-test/stream", {
+export async function retestCampaign(
+  runId: string,
+  revisedInput: CampaignInput
+): Promise<RetestResult> {
+  const res = await fetch("/api/crash-test/retest", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
+    body: JSON.stringify({ run_id: runId, revised_input: revisedInput }),
   });
 
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail ?? `Retest failed with status ${res.status}`);
+  }
+
+  return res.json();
+}
+
+async function _readSseStream(
+  res: Response,
+  onEvent: (event: StreamEvent) => void
+): Promise<void> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.detail ?? `Request failed with status ${res.status}`);
@@ -42,8 +54,7 @@ export async function runCrashTestStream(
 
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split("\n\n");
-    
-    // The last element is either empty (if buffer ends with \n\n) or an incomplete event
+
     buffer = lines.pop() || "";
 
     for (const line of lines) {
@@ -58,4 +69,26 @@ export async function runCrashTestStream(
       }
     }
   }
+}
+
+export async function runCrashTestStream(
+  input: CampaignInput,
+  onEvent: (event: StreamEvent) => void
+): Promise<void> {
+  const res = await fetch("/api/crash-test/stream", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  return _readSseStream(res, onEvent);
+}
+
+export async function retryAnalysisStream(
+  runId: string,
+  onEvent: (event: StreamEvent) => void
+): Promise<void> {
+  const res = await fetch(`/api/crash-test/${encodeURIComponent(runId)}/retry-analysis`, {
+    method: "POST",
+  });
+  return _readSseStream(res, onEvent);
 }

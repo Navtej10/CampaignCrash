@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 interface Props {
   value: { headlines: string[]; descriptions: string[] };
   onChange: (value: any) => void;

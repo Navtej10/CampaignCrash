@@ -50,12 +50,19 @@ Open http://localhost:5173. The dev server proxies `/api` to
   a `reason` string pulled from persona reactions — there's no bare number
   anywhere in the schema. Don't add one.
 - **Disagreement is a first-class field**, not something averaged away. See
-  `ConfusionCluster.disagreement` and the `DisagreementPanel` component.
-- **Critique and fix are separate pipeline stages** (`generate_reactions` →
-  `cluster_confusion` → `score_dimensions` → `suggest_fixes`), so you can
-  ship the critique half alone if you run out of weekend.
-- **No live URL fetching.** Landing page content is pasted as text. Don't
-  add a scraper unless you have real spare time — it's a rabbit hole.
+  `DisagreementPoint` and the `DisagreementPanel` component.
+- **Separate, modular pipeline stages:** `generate_personas` → `generate_reactions` →
+  parallel (`cluster_confusion` + `identify_strengths`) → deterministic `compute_headline_metrics`
+  + anchored `score_dimensions` (low temperature) → `suggest_fixes`.
+- **Platform vs. Format separation:** `CampaignInput.platform` supplies uniform
+  `PLATFORM_CONTEXT` to every persona rather than per-persona platform notes.
+- **Apples-to-apples re-testing via `run_id` store:** Every run is assigned a
+  `run_id` and stored in an in-memory TTL store (`_RUN_STORE` in `engine.py`)
+  with its generated persona roster and results. `POST /api/crash-test/retest`
+  re-runs evaluation on revised copy using the exact same persona set and
+  computes before/after score, headline, and cluster deltas.
+- **No live URL fetching.** Landing page content is pasted as text or uploaded
+  as a screenshot. Don't add a scraper unless you have real spare time.
 
 ## Next build steps (not yet done)
 
