@@ -1,7 +1,11 @@
 import type { CampaignInput, CrashTestResult, RetestResult, StreamEvent } from "../types";
 
+const API_BASE: string = (
+  (import.meta.env.VITE_API_URL as string | undefined) ?? ""
+).replace(/\/+$/, "");
+
 export async function runCrashTest(input: CampaignInput): Promise<CrashTestResult> {
-  const res = await fetch("/api/crash-test", {
+  const res = await fetch(`${API_BASE}/api/crash-test`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -19,7 +23,7 @@ export async function retestCampaign(
   runId: string,
   revisedInput: CampaignInput
 ): Promise<RetestResult> {
-  const res = await fetch("/api/crash-test/retest", {
+  const res = await fetch(`${API_BASE}/api/crash-test/retest`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ run_id: runId, revised_input: revisedInput }),
@@ -75,7 +79,7 @@ export async function runCrashTestStream(
   input: CampaignInput,
   onEvent: (event: StreamEvent) => void
 ): Promise<void> {
-  const res = await fetch("/api/crash-test/stream", {
+  const res = await fetch(`${API_BASE}/api/crash-test/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -87,7 +91,7 @@ export async function retryAnalysisStream(
   runId: string,
   onEvent: (event: StreamEvent) => void
 ): Promise<void> {
-  const res = await fetch(`/api/crash-test/${encodeURIComponent(runId)}/retry-analysis`, {
+  const res = await fetch(`${API_BASE}/api/crash-test/${encodeURIComponent(runId)}/retry-analysis`, {
     method: "POST",
   });
   return _readSseStream(res, onEvent);
